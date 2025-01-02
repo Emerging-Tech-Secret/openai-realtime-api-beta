@@ -255,6 +255,13 @@ export class RealtimeClient extends RealtimeEventHandler {
      */
     removeTool(name: string): true;
     /**
+     * Adds a concurrent agent
+     * @param {string} prompt_instructions
+     * @param {string} metadata_topic
+     * @returns {true}
+     */
+    addConcurrentAgent(prompt_instructions: string, metadata_topic: string): true;
+    /**
      * Deletes an item
      * @param {string} id
      * @returns {true}
