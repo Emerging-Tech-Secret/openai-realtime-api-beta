@@ -273,7 +273,7 @@ export class RealtimeClient extends RealtimeEventHandler {
      * If the client is not yet connected, will save details and instantiate upon connection
      * @param {SessionResourceType} [sessionConfig]
      */
-    updateSession({ modalities, instructions, voice, input_audio_format, output_audio_format, input_audio_transcription, turn_detection, tools, tool_choice, conversation, temperature, max_response_output_tokens, }?: SessionResourceType): boolean;
+    updateSession({ modalities, instructions, voice, input_audio_format, output_audio_format, input_audio_transcription, turn_detection, tools, tool_choice, temperature, max_response_output_tokens, }?: SessionResourceType): boolean;
     /**
      * Sends user message content and generates a response
      * @param {Array<InputTextContentType|InputAudioContentType>} content
