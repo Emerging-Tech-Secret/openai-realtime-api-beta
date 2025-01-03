@@ -26,6 +26,7 @@
  * @property {string} [model]
  * @property {string[]} [modalities]
  * @property {string} [instructions]
+ * @property {"auto"|"none"} [conversation]
  * @property {"alloy"|"ash"|"ballad"|"coral"|"echo"|"sage"|"shimmer"|"verse"} [voice]
  * @property {AudioFormatType} [input_audio_format]
  * @property {AudioFormatType} [output_audio_format]
@@ -171,6 +172,7 @@ export class RealtimeClient extends RealtimeEventHandler {
     defaultSessionConfig: {
         modalities: string[];
         instructions: string;
+        conversation: string;
         voice: string;
         input_audio_format: string;
         output_audio_format: string;
@@ -272,7 +274,7 @@ export class RealtimeClient extends RealtimeEventHandler {
      * If the client is not yet connected, will save details and instantiate upon connection
      * @param {SessionResourceType} [sessionConfig]
      */
-    updateSession({ modalities, instructions, voice, input_audio_format, output_audio_format, input_audio_transcription, turn_detection, tools, tool_choice, temperature, max_response_output_tokens, }?: SessionResourceType): boolean;
+    updateSession({ modalities, instructions, conversation, voice, input_audio_format, output_audio_format, input_audio_transcription, turn_detection, tools, tool_choice, temperature, max_response_output_tokens, }?: SessionResourceType): boolean;
     /**
      * Sends user message content and generates a response
      * @param {Array<InputTextContentType|InputAudioContentType>} content
@@ -343,6 +345,7 @@ export type SessionResourceType = {
     model?: string;
     modalities?: string[];
     instructions?: string;
+    conversation?: "auto" | "none";
     voice?: "alloy" | "ash" | "ballad" | "coral" | "echo" | "sage" | "shimmer" | "verse";
     input_audio_format?: AudioFormatType;
     output_audio_format?: AudioFormatType;
