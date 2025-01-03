@@ -33,6 +33,7 @@
  * @property {TurnDetectionServerVadType|null} [turn_detection]
  * @property {ToolDefinitionType[]} [tools]
  * @property {"auto"|"none"|"required"|{type:"function",name:string}} [tool_choice]
+ * @property {"auto"|"none"} [conversation]
  * @property {number} [temperature]
  * @property {number|"inf"} [max_response_output_tokens]
  */
@@ -353,6 +354,7 @@ export type SessionResourceType = {
         type: "function";
         name: string;
     };
+    conversation?: "auto" | "none";
     temperature?: number;
     max_response_output_tokens?: number | "inf";
 };
