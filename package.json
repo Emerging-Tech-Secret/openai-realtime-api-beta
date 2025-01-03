@@ -7,6 +7,7 @@
   "main": "index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
     "test": "mocha ./test/index.js"
   },
   "author": "Keith Horwood <khorwood@openai.com>",
