@@ -258,9 +258,10 @@ export class RealtimeClient extends RealtimeEventHandler {
      * Adds a concurrent agent
      * @param {string} prompt_instructions
      * @param {string} metadata_topic
+     * @param {string} message_id
      * @returns {true}
      */
-    addConcurrentAgent(prompt_instructions: string, metadata_topic: string): true;
+    addConcurrentAgent(prompt_instructions: string, metadata_topic: string, message_id: string): true;
     /**
      * Deletes an item
      * @param {string} id
