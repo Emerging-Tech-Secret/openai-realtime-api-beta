@@ -1,3 +1,52 @@
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User (Client)
+    participant S as OpenAI Realtime (Server)
+
+    Note left of U: 1) Create a Realtime session (with VAD)
+    U->>S: POST /v1/realtime/sessions <br/>(Create session with turn_detection=server_vad)
+    S->>U: session.created <br/>(audio-only config + ephemeral key,<br/> turn_detection.type=server_vad,<br/> create_response=true)
+
+    Note over U,S: 2) First user audio: “Hello!”
+    U->>S: input_audio_buffer.append <br/>(base64-encoded audio chunks)
+    S->>U: input_audio_buffer.speech_started <br/>(server VAD detects voice)
+    U->>S: input_audio_buffer.append <br/>(more audio)
+    S->>U: input_audio_buffer.speech_stopped <br/>(server detects silence)
+    S->>U: input_audio_buffer.committed <br/>(announces new item_id)
+    S->>U: conversation.item.created <br/>(user item: contains the audio)
+
+    Note over U,S: 3) Model auto-response
+    S->>U: response.created (status=in_progress) <br/>(Triggered automatically by VAD)
+    alt Model streams partial audio
+        S->>U: response.audio.delta <br/>(base64-encoded audio)
+        S->>U: response.audio_transcript.delta <br/>(optional if output transcription enabled)
+    end
+    S->>U: response.audio.done
+    S->>U: response.audio_transcript.done
+    S->>U: response.output_item.done <br/>(assistant message complete)
+    S->>U: response.done <br/>(final status=completed)
+
+    Note over U,S: 4) Second user audio: “Fine! See ya!”
+    U->>S: input_audio_buffer.append <br/>(base64-encoded audio chunks)
+    S->>U: input_audio_buffer.speech_started <br/>(detected voice)
+    U->>S: input_audio_buffer.append <br/>(more audio)
+    S->>U: input_audio_buffer.speech_stopped <br/>(server detects silence)
+    S->>U: input_audio_buffer.committed
+    S->>U: conversation.item.created <br/>(user item: more audio)
+
+    Note over U,S: 5) Model auto-response again
+    S->>U: response.created (status=in_progress)
+    alt Model streams partial audio
+        S->>U: response.audio.delta (base64 audio)
+        S->>U: response.audio_transcript.delta
+    end
+    S->>U: response.audio.done
+    S->>U: response.audio_transcript.done
+    S->>U: response.output_item.done
+    S->>U: response.done <br/>(completed)
+```
+
 # **Realtime**
 
 **Beta**
