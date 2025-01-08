@@ -1,3 +1,100 @@
+# **OpenAI Realtime** (Beta)
+
+This documents the events and the sequence of events available for use when communicating with OpenAI Realtime.
+
+Below there are some sequence diagrams illustrating the necessary events (client and server sided) for a simple conversation like the following:
+
+- **User**: "Hi!"
+- **Model**: "Hi there! How are you?"
+- **User**: "Fine! See ya!"
+- **Model**: "Bye! I'll be here if you need something!"
+
+## Text-only messages
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User (Client)
+    participant M as Model (Server)
+
+    Note left of U: 1) Create a Realtime session
+    U->>M: POST /v1/realtime/sessions <br/>(Create session)
+    M->>U: session.created <br/>(contains session configuration + ephemeral key)
+
+    Note over U,M: 2) First user message
+    U->>M: conversation.item.create <br/>(User: "Hi!")
+    M->>U: conversation.item.created (user message created)
+    U->>M: response.create (asks model to respond)
+    M->>U: response.created (status=in_progress)
+    alt Model streams back text
+        M->>U: response.text.delta ("Hi there!")
+        M->>U: response.text.done ("Hi there! How are you?")
+    end
+    M->>U: response.output_item.done <br/>(assistant message complete)
+    M->>U: response.done <br/>(final status=completed)
+
+    Note over U,M: 3) Second user message
+    U->>M: conversation.item.create <br/>(User: "Fine! See ya!")
+    M->>U: conversation.item.created (user message created)
+    U->>M: response.create (asks model to respond again)
+    M->>U: response.created (status=in_progress)
+    alt Model streams back text
+        M->>U: response.text.delta ("Bye!")
+        M->>U: response.text.done ("Bye! I'll be here if you need something!")
+    end
+    M->>U: response.output_item.done <br/>(assistant message complete)
+    M->>U: response.done <br/>(final status=completed)
+```
+
+## Audio-only messages (VAD disabled)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User (Client)
+    participant S as OpenAI Realtime (Server)
+
+    Note left of U: 1) Create a Realtime session
+    U->>S: POST /v1/realtime/sessions <br/>(Create session)
+    S->>U: session.created <br/>(audio-only config + ephemeral key)
+
+    Note over U,S: 2) First user audio: “Hello!”
+    U->>S: input_audio_buffer.append <br/>(base64-encoded audio chunk)
+    U->>S: input_audio_buffer.commit <br/>(finish user audio)
+    S->>U: input_audio_buffer.committed <br/>(announces new item_id)
+    S->>U: conversation.item.created <br/>(user item: contains the audio)
+
+    Note over U,S: 3) Ask model to respond (audio)
+    U->>S: response.create (modalities=["audio"])
+    S->>U: response.created (status=in_progress)
+    alt Model streams partial audio
+        S->>U: response.audio.delta (base64-encoded audio)
+        S->>U: response.audio_transcript.delta <br/>(optional if output transcription is enabled)
+    end
+    S->>U: response.audio.done
+    S->>U: response.audio_transcript.done <br/>(if transcription was enabled)
+    S->>U: response.output_item.done <br/>(assistant message complete)
+    S->>U: response.done <br/>(final status=completed)
+
+    Note over U,S: 4) Second user audio: “Fine! See ya!”
+    U->>S: input_audio_buffer.append <br/>(base64-encoded audio chunk)
+    U->>S: input_audio_buffer.commit
+    S->>U: input_audio_buffer.committed
+    S->>U: conversation.item.created <br/>(user item: more audio)
+
+    Note over U,S: 5) Ask model to respond again
+    U->>S: response.create (modalities=["audio"])
+    S->>U: response.created (status=in_progress)
+    alt Model streams partial audio
+        S->>U: response.audio.delta (base64-encoded audio)
+        S->>U: response.audio_transcript.delta <br/>(optional if output transcription is enabled)
+    end
+    S->>U: response.audio.done
+    S->>U: response.audio_transcript.done
+    S->>U: response.output_item.done <br/>(assistant message complete)
+    S->>U: response.done <br/>(final status=completed)
+```
+
+## Audio-only messages (VAD on)
 ```mermaid
 sequenceDiagram
     autonumber
@@ -47,11 +144,97 @@ sequenceDiagram
     S->>U: response.done <br/>(completed)
 ```
 
-# **Realtime**
+Below is a **side-by-side comparison** of how a conversation flow differs between **Text-Only** and **Audio-Only** modes, and how **VAD (Voice Activity Detection)** changes the flow of audio. We compare these scenarios from **session creation** up to the point where the **model’s response arrives**.
 
-**Beta**
+## 1. **Session Creation**
 
-Communicate with a GPT-4o class model in real time using WebRTC or WebSockets. Supports text and audio inputs and outputs, along with audio transcriptions. [Learn more about the Realtime API](/docs/guides/realtime).
+### **Text-Only**  
+- **Modalities**: `["text"]`  
+- You typically configure just the model, temperature, instructions, etc. No audio fields are needed.  
+- The server emits `session.created` with text-based defaults (e.g., no `input_audio_format`, `voice`, or `turn_detection`).
+
+### **Audio-Only, VAD Off**  
+- **Modalities**: `["audio"]`  
+- You might set `input_audio_format`, `output_audio_format`, `voice`, etc.  
+- **turn_detection** is `null` or omitted.  
+- The server emits `session.created` reflecting an audio-only configuration without VAD.
+
+### **Audio-Only, VAD On**  
+- **Modalities**: `["audio"]`  
+- You provide `turn_detection={ type: "server_vad", ... }` to enable server-side voice detection.  
+- The server emits `session.created` showing VAD is enabled (e.g., `turn_detection.type=server_vad`).
+
+---
+
+## 2. **User Message Sending**
+
+### **Text-Only**
+1. **User sends message**  
+   - The client uses `conversation.item.create` with `type="message"`, `role="user"`, `content=[ { "type": "input_text", "text": "...user text..." } ]`.  
+   - The server responds with `conversation.item.created`, acknowledging the new user message item.
+
+2. **(Optional) Request a response**  
+   - Client calls `response.create` to make the model generate an assistant message.  
+   - The server emits `response.created`, followed by streaming text events (`response.text.delta`, `response.text.done`).
+
+### **Audio-Only, VAD Off**
+1. **User sends audio**  
+   - The client repeatedly calls `input_audio_buffer.append` with base64-encoded audio chunks.  
+   - When the user is done speaking, the client **manually** sends `input_audio_buffer.commit`.  
+   - The server then responds with `input_audio_buffer.committed` and a `conversation.item.created` event (indicating the user’s audio message was added).
+
+2. **(Optional) Request a response**  
+   - Same as text: call `response.create`.  
+   - The server streams back audio with `response.audio.delta` and eventually `response.audio.done`.
+
+### **Audio-Only, VAD On**
+1. **User sends audio**  
+   - The client simply calls `input_audio_buffer.append` with base64 audio.  
+   - **Server VAD** automatically detects speech start (`input_audio_buffer.speech_started`) and speech stop (`input_audio_buffer.speech_stopped`).  
+   - When the server detects silence, it **automatically commits** the buffer—no client commit is needed. The server sends `input_audio_buffer.committed` and `conversation.item.created`.
+
+2. **(Optional) Automatic response**  
+   - If `turn_detection.create_response=true` in the session config, the server **automatically** calls `response.create` after committing the user message.  
+   - The server streams back audio with `response.audio.delta` until done.
+
+---
+
+## 3. **Model Response Arrival**
+
+### **Text-Only**  
+- After the client sends `response.create`, you get:  
+  1. `response.created` (acknowledges the new response is in progress)  
+  2. `response.text.delta` events (partial text)  
+  3. `response.text.done` for the final chunk of text  
+  4. `response.output_item.done` (assistant message complete)  
+  5. `response.done` (wraps up the entire response)
+
+### **Audio-Only, VAD Off**  
+- After `response.create`, you get:  
+  1. `response.created`  
+  2. Multiple `response.audio.delta` events, each carrying **base64-encoded audio**  
+  3. (Optional) `response.audio_transcript.delta/done` if **output transcription** is enabled  
+  4. `response.audio.done` indicating no more audio  
+  5. `response.output_item.done`  
+  6. `response.done`
+
+### **Audio-Only, VAD On**  
+- Very similar to **VAD Off** for receiving audio data. The difference is in **how** the user message was committed:
+  - The server automatically triggers the next response if `create_response=true`.  
+  - Otherwise, the client can still call `response.create` manually.  
+- You still receive:
+  1. `response.created`  
+  2. `response.audio.delta` (audio streaming)  
+  3. (Optional) `response.audio_transcript.delta/done`  
+  4. `response.audio.done`  
+  5. `response.output_item.done`  
+  6. `response.done`
+
+---
+
+## Official OpenAI events documentation
+
+Communicate with a GPT-4o class model in real time using WebRTC or WebSockets. Supports text and audio inputs and outputs, along with audio transcriptions.
 
 ## **Session tokens**
 
