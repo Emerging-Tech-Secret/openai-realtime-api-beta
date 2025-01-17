@@ -1,7 +1,7 @@
 import * as chai from 'chai';
 const expect = chai.expect;
 
-import { RealtimeClient } from '../../index.js';
+import { RealtimeClient } from '../../index.ts';
 
 export async function run({ debug = false } = {}) {
   describe('RealtimeClient (Browser)', () => {

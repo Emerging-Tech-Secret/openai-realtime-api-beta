@@ -10,7 +10,7 @@ const samples = {
   'toronto-mp3': './test/samples/toronto.mp3',
 };
 
-import { RealtimeClient, RealtimeUtils } from '../../index.js';
+import { RealtimeClient, RealtimeUtils } from '../../index.ts';
 
 export async function run({ debug = false } = {}) {
   describe('Audio samples tests', () => {

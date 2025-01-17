@@ -1,7 +1,7 @@
 import * as chai from 'chai';
 const expect = chai.expect;
 
-import { RealtimeAPI } from '../../index.js';
+import { RealtimeAPI } from '../../index.ts';
 
 export async function run() {
   describe('RealtimeAPI', ({ debug = false } = {}) => {

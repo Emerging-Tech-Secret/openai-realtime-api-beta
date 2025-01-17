@@ -13,6 +13,7 @@
   "author": "Keith Horwood <khorwood@openai.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^22.10.7",
     "audio-decode": "^2.2.2",
     "chai": "^5.1.1",
     "dotenv": "^16.4.5",
